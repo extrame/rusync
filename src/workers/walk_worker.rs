@@ -9,6 +9,7 @@ use anyhow::{bail, Context, Error};
 use crate::entry::Entry;
 use crate::fsops;
 use crate::progress::ProgressMessage;
+use crate::SyncOptions;
 
 pub struct WalkWorker {
     entry_output: Sender<Entry>,
@@ -43,6 +44,7 @@ impl WalkWorker {
                 )
             })?;
             for entry in entries {
+
                 let entry = entry.with_context(|| {
                     format!(
                         "While walking source dir, could not read subdir: '{}'",
@@ -50,6 +52,7 @@ impl WalkWorker {
                     )
                 })?;
                 let path = entry.path();
+
                 if path.is_dir() {
                     subdirs.push(path);
                 } else {
@@ -82,7 +85,7 @@ impl WalkWorker {
         Ok(metadata.clone())
     }
 
-    pub fn start(&self) {
+    pub fn start(&self, opts: SyncOptions) {
         let outcome = &self.walk();
         if outcome.is_err() {
             // Send err to output

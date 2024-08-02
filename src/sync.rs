@@ -95,16 +95,25 @@ impl Stats {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 pub struct SyncOptions {
     /// Wether to preserve permissions of the source file after the destination is written.
     pub preserve_permissions: bool,
+    /// exclude list for files to be excluded from the sync
+    pub exclude_list: Vec<String>,
+    /// include list for files to be included in the sync
+    pub include_list: Vec<String>,
+    /// file_names  to be specifically included 
+    pub file_names: Vec<String>,
 }
 
 impl Default for SyncOptions {
     fn default() -> Self {
         Self {
             preserve_permissions: true,
+            exclude_list: Vec::new(),
+            include_list: Vec::new(),
+            file_names: Vec::new(),
         }
     }
 }
@@ -136,7 +145,7 @@ impl Syncer {
         let (walker_stats_output, progress_input) = channel::<ProgressMessage>();
         let progress_output = walker_stats_output.clone();
 
-        let walk_worker = WalkWorker::new(&self.source, walker_entry_output, walker_stats_output);
+        let walk_worker: WalkWorker = WalkWorker::new(&self.source, walker_entry_output, walker_stats_output);
         let sync_worker = SyncWorker::new(
             &self.source,
             &self.destination,
@@ -144,10 +153,12 @@ impl Syncer {
             progress_output,
         );
         let progress_worker = ProgressWorker::new(progress_input, self.progress_info);
-        let options = self.options;
+        // let options = self.options;
+        let walk_options = self.options.clone();
+        let sync_options = self.options.clone();
 
-        let walker_thread = thread::spawn(move || walk_worker.start());
-        let syncer_thread = thread::spawn(move || sync_worker.start(options));
+        let walker_thread = thread::spawn(move || walk_worker.start(walk_options));
+        let syncer_thread = thread::spawn(move || sync_worker.start(sync_options));
         let progress_thread = thread::spawn(|| progress_worker.start());
 
         walker_thread

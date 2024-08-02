@@ -35,7 +35,28 @@ impl SyncWorker {
 
     pub fn start(self, opts: SyncOptions) -> Result<(), Error> {
         for entry in self.input.iter() {
-            let sync_outcome = self.sync(&entry, opts);
+            //test if the entry is excluded by the exclude list
+            if opts.exclude_list.iter().any(|pattern| entry.description().contains(pattern)) {
+                //print the entry to the console
+                let progress_message = ProgressMessage::Excluded(entry.description().to_string());
+                self.output.send(progress_message)?;
+                //test if the entry is included by the include list
+                if opts.include_list.iter().any(|pattern| entry.description().contains(pattern)) {
+                    let sync_outcome = self.sync(&entry, &opts);
+                    let progress_message = match sync_outcome {
+                        Ok(s) => ProgressMessage::DoneSyncing(s),
+                        Err(e) => ProgressMessage::SyncError {
+                            entry: entry.description().to_string(),
+                            details: format!("{:#}", e),
+                        },
+                    };
+                    self.output.send(progress_message)?;
+                }else{
+                    continue;
+                }
+            }
+
+            let sync_outcome = self.sync(&entry, &opts);
             let progress_message = match sync_outcome {
                 Ok(s) => ProgressMessage::DoneSyncing(s),
                 Err(e) => ProgressMessage::SyncError {
@@ -58,7 +79,7 @@ impl SyncWorker {
         Ok(())
     }
 
-    fn sync(&self, src_entry: &Entry, opts: SyncOptions) -> Result<SyncOutcome, Error> {
+    fn sync(&self, src_entry: &Entry, opts: &SyncOptions) -> Result<SyncOutcome, Error> {
         let rel_path = fsops::get_rel_path(src_entry.path(), &self.source);
         self.create_missing_dest_dirs(&rel_path)?;
         let desc = rel_path.to_string_lossy();

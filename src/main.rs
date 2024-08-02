@@ -27,10 +27,26 @@ struct Opt {
 
 fn main() -> Result<(), Error> {
     let opt = Opt::parse();
-    let source = &opt.source;
+    let mut source = opt.source.clone();
+    let options;
     if !source.is_dir() {
-        eprintln!("{} is not a directory", source.to_string_lossy());
-        process::exit(1);
+        //exclude *
+        //include source file name
+        options = SyncOptions {
+            preserve_permissions: !opt.no_preserve_permissions,
+            file_names: vec![source.file_name().unwrap().to_str().unwrap().to_string()],
+            exclude_list: vec![],
+            include_list: vec![],
+        };
+        //change source to source parent
+        source = source.parent().unwrap().to_path_buf();
+    }else{
+        options = SyncOptions {
+            preserve_permissions: !opt.no_preserve_permissions,
+            exclude_list: vec![],
+            include_list: vec![],
+            file_names: vec![],
+        };
     }
     let destination = &opt.destination;
 
@@ -38,10 +54,7 @@ fn main() -> Result<(), Error> {
         Some(err_file) => ConsoleProgressInfo::with_error_list_path(&err_file)?,
         None => ConsoleProgressInfo::new(),
     };
-    let options = SyncOptions {
-        preserve_permissions: !opt.no_preserve_permissions,
-    };
-    let syncer = Syncer::new(source, destination, options, Box::new(console_info));
+    let syncer = Syncer::new(&source, destination, options, Box::new(console_info));
     let stats = syncer.sync();
     match stats {
         Err(err) => {

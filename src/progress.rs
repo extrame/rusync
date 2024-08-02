@@ -18,6 +18,7 @@ pub enum ProgressMessage {
         entry: String,
         details: String,
     },
+    Excluded(String),
 }
 
 pub struct Progress {
@@ -66,4 +67,10 @@ pub trait ProgressInfo {
     /// The entry could not be synced
     #[allow(unused_variables)]
     fn error(&mut self, entry: &str, details: &str) {}
+
+    /// The entry is excluded from the sync
+    /// This is called when an entry is excluded by the exclude list
+    /// or not included by the include list
+    #[allow(unused_variables)]
+    fn excluded(&mut self, entry: &str) {}
 }

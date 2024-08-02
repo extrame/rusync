@@ -68,6 +68,9 @@ impl ProgressWorker {
                     };
                     self.progress_info.progress(&detailed_progress);
                 }
+                ProgressMessage::Excluded(x) => {
+                    self.progress_info.excluded(&x);
+                }
             }
         }
         stats.stop();
